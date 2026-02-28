@@ -213,6 +213,12 @@ PUBLIC_BASE_URL=https://your-public-url
 CALLBACK_PATH=/api/v1/payments/callback/khalti
 ```
 
+Spring app compatibility:
+
+- This starter reads `KHALTI_SECRET_KEY` directly, same as the Spring app.
+- It also accepts `NGROK_URL` as the public callback base URL, same as the Spring app.
+- If `khalti-node-express-starter/.env` is missing those values, it will fall back to the parent workspace `.env`.
+
 If you do not set `KHALTI_BASE_URL`, the starter uses:
 
 ```text
