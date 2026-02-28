@@ -1,38 +1,28 @@
 # Khalti Node Express Starter
 
-A simple, modular, open source starter for **Khalti ePayment** using **Node.js + Express**.
+A modular Node.js + Express starter for **real Khalti ePayment integration**.
 
-This project is intentionally focused on one thing only:
+This repo is intentionally narrow in scope. It focuses only on the Khalti payment lifecycle:
 
-- initiating Khalti payments
-- handling the callback flow
-- tracking transaction state
-- storing payment events for debugging and learning
+- initiate payment from your backend
+- redirect the user to Khalti Web Checkout
+- receive the callback on your backend
+- confirm the final status using Khalti lookup
+- persist transactions and payment events for debugging and reference
 
-It does **not** add wallet logic, user auth, or a real database. Those can be layered in later. For newcomers, this keeps the reference small and easier to reuse.
+There is no wallet system, no fake checkout, and no database dependency. The goal is to give newcomers a clean, practical reference they can lift into their own project.
 
-## Why this starter exists
+## What this starter includes
 
-The goal is to provide a clean starter that developers can:
-
-- run locally in a few minutes
-- understand without reading a large codebase
-- use as a template in real applications
-- compare with a Spring-based Khalti implementation
-
-## Features
-
-- Modular Express project structure
-- Khalti-only payment flow
-- Two operating modes:
-  - `mock`: fully local demo mode with a fake checkout page
-  - `live`: real Khalti sandbox/live API integration
-- File-backed JSON data store for transactions and payment events
-- Callback handling with lookup-based confirmation
-- Optional custom HMAC signature enforcement if you proxy or sign callback traffic in your own stack
-- Lookup verification after live callback reception
-- HTML callback page for quick visual confirmation
-- `.env.example` for fast setup
+- Express app with a modular folder structure
+- Real Khalti sandbox and production configuration
+- Server-side payment initiation
+- Callback handler for Khalti redirect flow
+- Lookup-based settlement so callback query params are not treated as final truth
+- Local JSON persistence for `transactions` and `paymentEvents`
+- Manual lookup endpoint for re-syncing a transaction
+- `.env.example` with the required setup variables
+- README guidance for local development and public callback URLs
 
 ## Project structure
 
@@ -61,13 +51,15 @@ khalti-node-express-starter/
 
 ## Data model
 
-This starter uses a local JSON file instead of Postgres so it runs with zero database setup.
+This starter uses a file-backed JSON store so the repo runs without Postgres or Docker.
 
 ### Transactions
 
 Each transaction stores:
 
-- internal `id`
+- `id`
+- `provider`
+- `environment`
 - `purchaseOrderId`
 - `purchaseOrderName`
 - `amountNpr`
@@ -77,34 +69,43 @@ Each transaction stores:
 - `paymentUrl`
 - `returnUrl`
 - `websiteUrl`
-- callback and lookup payload snapshots
+- `expiresAt`
+- `expiresIn`
+- `customerInfo`
+- `metadata`
+- `gateway.rawInitiateResponse`
+- `gateway.rawCallbackQuery`
+- `gateway.rawLookupResponse`
 - timestamps
 
 ### Payment events
 
-Each payment event stores:
+Each event stores:
 
-- internal `id`
+- `id`
 - `transactionId`
-- event `type`
-- event `source`
-- raw `payload`
+- `type`
+- `source`
+- `payload`
 - `createdAt`
 
-This mirrors the main ideas from your Spring implementation:
+This mirrors the useful parts of a production payment design:
 
-- a transaction record
-- a provider transaction identifier (`pidx`)
-- payment lifecycle updates
-- an event trail for audit/debugging
+- one main payment transaction record
+- provider identifiers like `pidx`
+- an append-only event trail for debugging and audits
 
-## API flow
+## Payment flow
 
 ### 1. Initiate payment
 
-`POST /api/v1/payments/initiate`
+Endpoint:
 
-Example body:
+```text
+POST /api/v1/payments/initiate
+```
+
+Example request body:
 
 ```json
 {
@@ -113,7 +114,8 @@ Example body:
   "purchaseOrderName": "Starter Plan",
   "customerInfo": {
     "name": "Test User",
-    "email": "test@example.com"
+    "email": "test@example.com",
+    "phone": "9800000001"
   },
   "metadata": {
     "source": "docs-example"
@@ -126,44 +128,64 @@ Response includes:
 - internal transaction record
 - `pidx`
 - `paymentUrl`
-- expiry data
+- expiry data returned by Khalti
 
-### 2. Open Khalti payment page
+Starter note:
 
-Use the returned `paymentUrl`.
+- This starter accepts amounts from `1 NPR`.
+- Khalti's current Web Checkout docs show validation errors for amounts below Rs. 10 on real requests, so sandbox or production may still reject very small amounts even though the app accepts them.
 
-- In `live` mode, this is the real Khalti payment URL.
-- In `mock` mode, this is a local mock checkout screen that simulates Khalti.
+### 2. Redirect the user to Khalti
 
-### 3. Receive callback
+Open or redirect to the returned `paymentUrl`.
+
+Example response shape from Khalti:
+
+```json
+{
+  "pidx": "dKo8K8fKm7VGDZwp46u7Ca",
+  "payment_url": "https://test-pay.khalti.com/?pidx=dKo8K8fKm7VGDZwp46u7Ca",
+  "expires_at": "2026-02-28T16:20:58.634899+05:45",
+  "expires_in": 1800
+}
+```
+
+### 3. Receive callback on your backend
 
 Khalti redirects to:
 
-`GET /api/v1/payments/callback/khalti`
+```text
+GET /api/v1/payments/callback/khalti
+```
 
-The starter:
+The app does not trust the callback query alone as final confirmation. It:
 
 - records the callback as a payment event
-- updates transaction status
-- runs lookup verification in `live` mode
-- shows a basic HTML result page
+- stores the raw callback query on the transaction
+- performs Khalti lookup using `pidx`
+- updates the transaction using the lookup response as the authoritative source
+- renders an HTML status page for quick confirmation
 
-Important:
+### 4. Re-sync manually if needed
 
-- For real Khalti confirmation, rely on the lookup API after the redirect callback.
-- The optional `STRICT_CALLBACK_SIGNATURE` setting in this starter is an app-level hardening option, not a replacement for Khalti lookup confirmation.
+You can trigger lookup again for a stored transaction:
 
-## Endpoints
+```text
+POST /api/v1/payments/:transactionId/lookup
+```
+
+This is useful during debugging, retries, or when you want to verify a status after the redirect flow.
+
+## API endpoints
 
 - `GET /`
 - `GET /api/v1/health`
 - `POST /api/v1/payments/initiate`
 - `GET /api/v1/payments`
 - `GET /api/v1/payments/:transactionId`
+- `POST /api/v1/payments/:transactionId/lookup`
 - `GET /api/v1/payments/events`
 - `GET /api/v1/payments/callback/khalti`
-- `GET /api/v1/payments/mock/checkout/:pidx`
-- `POST /api/v1/payments/mock/checkout/:pidx/complete`
 
 ## Setup
 
@@ -173,30 +195,37 @@ Important:
 npm install
 ```
 
-### 2. Create environment file
+### 2. Create your env file
 
 ```bash
 cp .env.example .env
 ```
 
-### 3. Start in mock mode
+### 3. Set Khalti sandbox credentials
 
-Keep:
+Use your Khalti test credentials in `.env`:
 
 ```env
-KHALTI_MODE=mock
-PUBLIC_BASE_URL=http://localhost:3000
+KHALTI_ENV=sandbox
+KHALTI_SECRET_KEY=your_test_secret_key
+WEBSITE_URL=http://localhost:5173
+PUBLIC_BASE_URL=https://your-public-url
+CALLBACK_PATH=/api/v1/payments/callback/khalti
 ```
 
-Then run:
+If you do not set `KHALTI_BASE_URL`, the starter uses:
+
+```text
+https://dev.khalti.com/api/v2
+```
+
+### 4. Start the server
 
 ```bash
 npm run dev
 ```
 
-### 4. Test locally
-
-Initiate a payment:
+### 5. Initiate a payment
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/payments/initiate \
@@ -208,41 +237,25 @@ curl -X POST http://localhost:3000/api/v1/payments/initiate \
   }'
 ```
 
-Open the returned `paymentUrl` in the browser and simulate success or cancellation.
-
-## Live Khalti mode
-
-Switch:
-
-```env
-KHALTI_MODE=live
-KHALTI_BASE_URL=https://dev.khalti.com/api/v2
-KHALTI_SECRET_KEY=your_secret_key
-WEBSITE_URL=http://localhost:5173
-```
-
-You also need a **public callback URL** because Khalti must redirect back to a reachable URL.
+The response will include a real Khalti `paymentUrl`. Open that URL in the browser and complete the sandbox checkout.
 
 ## Public callback URL options
 
-This starter supports both approaches through the same env variable:
+Khalti must be able to redirect back to a reachable callback URL. The starter builds it as:
 
-- `PUBLIC_BASE_URL=https://your-public-url`
-- `CALLBACK_PATH=/api/v1/payments/callback/khalti`
+```text
+PUBLIC_BASE_URL + CALLBACK_PATH
+```
 
-The final callback URL becomes:
-
-`PUBLIC_BASE_URL + CALLBACK_PATH`
+Two practical options:
 
 ### Option 1: ngrok
-
-Set:
 
 ```bash
 ngrok http 3000
 ```
 
-Then place the generated HTTPS URL into `.env`:
+Then copy the HTTPS URL into `.env`:
 
 ```env
 PUBLIC_BASE_URL=https://your-subdomain.ngrok-free.app
@@ -250,66 +263,71 @@ PUBLIC_BASE_URL=https://your-subdomain.ngrok-free.app
 
 ### Option 2: Cloudflare Quick Tunnel
 
-Set:
-
 ```bash
 cloudflared tunnel --url http://localhost:3000
 ```
 
-Then place the generated HTTPS URL into `.env`:
+Then copy the generated URL into `.env`:
 
 ```env
 PUBLIC_BASE_URL=https://random-subdomain.trycloudflare.com
 ```
 
-Cloudflare Quick Tunnel is a strong alternative when you want a simple public URL without configuring a separate app inside this project.
+Cloudflare Quick Tunnel is a good alternative when you want a fast public callback URL without setting up extra app-side tooling.
 
-## Security notes
+## Sandbox vs production
 
-- Payment initiation is always server-side.
-- In `live` mode, callback verification should be backed by Khalti lookup.
-- `STRICT_CALLBACK_SIGNATURE=true` can be enabled if you want to reject unsigned or invalid callback requests.
-- The starter prevents duplicate `purchaseOrderId` values to keep the example deterministic.
-- Completed transactions are not re-settled on repeated callbacks.
+### Sandbox
 
-## How to use this starter in a real project
+```env
+KHALTI_ENV=sandbox
+```
 
-### If you are building a new app
+Default base URL:
 
-Start with this starter and then replace the file store with:
+```text
+https://dev.khalti.com/api/v2
+```
 
-- PostgreSQL
-- MySQL
-- MongoDB
-- Prisma
-- Drizzle
+### Production
 
-Then extend the transaction schema with:
+```env
+KHALTI_ENV=production
+KHALTI_SECRET_KEY=your_live_secret_key
+PUBLIC_BASE_URL=https://api.yourdomain.com
+WEBSITE_URL=https://yourdomain.com
+```
 
-- user ID
-- order ID
-- reconciliation fields
-- refund fields
-- internal audit logs
+Default base URL:
 
-### If you already have an application
+```text
+https://khalti.com/api/v2
+```
 
-Reuse these pieces:
+## Security and design notes
 
-- `KhaltiClient`
-- `PaymentService`
-- callback signature utility
-- lookup verification step
-- event trail design
+- Payment initiation is server-side only.
+- Transaction confirmation is based on Khalti lookup, not the redirect query alone.
+- Duplicate `purchaseOrderId` values are rejected to keep the reference deterministic.
+- Repeated callbacks do not re-settle an already completed transaction.
+- The JSON store is for learning and starter use only. Replace it with a real database in production.
 
-## Suggested production improvements
+## How to use this in your own project
 
-- move JSON storage to a real database
-- add request validation with a schema library
-- add tests for callback and lookup paths
-- add idempotency keys
-- add structured logging
-- add webhook replay protection
+If you already have an app, the most reusable parts are:
+
+- `src/services/khalti/khaltiClient.js`
+- `src/services/paymentService.js`
+- the callback flow with lookup confirmation
+- the transaction + payment event persistence shape
+
+If you want to productionize it, the next changes are usually:
+
+1. Replace the JSON file store with Postgres, MySQL, MongoDB, Prisma, or Drizzle.
+2. Add request validation with a schema library such as Zod or Joi.
+3. Add tests for initiate, callback, lookup failure, and retry paths.
+4. Add authentication and associate transactions with your own users or orders.
+5. Add structured logging and reconciliation tooling.
 
 ## Reset local data
 
@@ -317,13 +335,8 @@ Reuse these pieces:
 npm run reset:data
 ```
 
-## Sources
+## References
 
-Khalti callback and lookup behavior in this starter follows the official Khalti ePayment docs:
-
-- https://docs.khalti.com/khalti-epayment/
-
-For public tunnel options referenced in this README:
-
-- https://ngrok.com/docs/http
-- https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/
+- Khalti ePayment docs: https://docs.khalti.com/khalti-epayment/
+- ngrok HTTP tunnels: https://ngrok.com/docs/http
+- Cloudflare Quick Tunnel: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/
