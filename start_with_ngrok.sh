@@ -2,19 +2,12 @@
 set -eu
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
-WORKSPACE_ENV="$PROJECT_DIR/../../.env"
 PROJECT_ENV="$PROJECT_DIR/.env"
 NGROK_PID=""
 
 if ! command -v ngrok >/dev/null 2>&1; then
   echo "ngrok is not installed or not available in PATH."
   exit 1
-fi
-
-if [ -f "$WORKSPACE_ENV" ]; then
-  set -a
-  . "$WORKSPACE_ENV"
-  set +a
 fi
 
 if [ -f "$PROJECT_ENV" ]; then

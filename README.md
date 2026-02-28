@@ -214,11 +214,7 @@ NGROK_URL=https://your-static-domain.ngrok-free.app
 CALLBACK_PATH=/api/v1/payments/callback/khalti
 ```
 
-Spring app compatibility:
-
-- This starter reads `KHALTI_SECRET_KEY` directly, same as the Spring app.
-- It also accepts `NGROK_URL` as the public callback base URL, same as the Spring app.
-- If `khalti-node-express-starter/.env` is missing those values, it will fall back to the parent workspace `.env`.
+This starter reads its configuration from its own local `.env` file only.
 
 If you do not set `KHALTI_BASE_URL`, the starter uses:
 
@@ -233,7 +229,7 @@ For local development, `npm run dev` starts everything you need:
 - ngrok for the callback URL
 - the Node server in watch mode
 
-It uses the single script [`start_with_ngrok.sh`](/Users/isubash/Developer/yugo/yugo-wallet/khalti-impl/khalti-node-express-starter/start_with_ngrok.sh), which reads `NGROK_URL` from the Spring root `.env` or the starter-local `.env`.
+It uses the single script [`start_with_ngrok.sh`](/Users/isubash/Developer/yugo/yugo-wallet/khalti-impl/khalti-node-express-starter/start_with_ngrok.sh), which reads `NGROK_URL` from the starter-local `.env`.
 
 ```bash
 npm run dev

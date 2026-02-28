@@ -2,12 +2,7 @@ const path = require("node:path");
 const dotenv = require("dotenv");
 
 const projectRoot = path.resolve(__dirname, "../..");
-const workspaceRoot = path.resolve(projectRoot, "../..");
-
-// Load the Spring app's root .env first so this starter can reuse the same Khalti vars.
-dotenv.config({ path: path.resolve(workspaceRoot, ".env") });
-// Then load the starter-local .env and let it override shared defaults when present.
-dotenv.config({ path: path.resolve(projectRoot, ".env"), override: true });
+dotenv.config({ path: path.resolve(projectRoot, ".env") });
 
 function getRequired(name) {
   const value = process.env[name];
