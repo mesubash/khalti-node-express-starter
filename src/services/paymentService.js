@@ -33,24 +33,12 @@ class PaymentService {
       initiatePayload.customer_info = input.customerInfo;
     }
 
-    let providerResponse;
-
-    if (this.env.isMockMode) {
-      const pidx = `mock-${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
-      providerResponse = {
-        pidx,
-        payment_url: `${this.env.publicBaseUrl}/api/v1/payments/mock/checkout/${pidx}`,
-        expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-        expires_in: 1800
-      };
-    } else {
-      providerResponse = await this.khaltiClient.initiatePayment(initiatePayload);
-    }
+    const providerResponse = await this.khaltiClient.initiatePayment(initiatePayload);
 
     const transaction = {
       id: transactionId,
       provider: "khalti",
-      mode: this.env.khaltiMode,
+      environment: this.env.khaltiEnvironment,
       purchaseOrderId: input.purchaseOrderId,
       purchaseOrderName: input.purchaseOrderName,
       amountNpr: input.amountNpr,
@@ -93,58 +81,14 @@ class PaymentService {
     }
 
     await this.recordEvent(transaction.id, "payment.callback.received", "khalti", query);
-
-    const updated = await this.applySettlement(transaction, {
-      status: normalizeKhaltiStatus(query.status),
-      transactionId: query.transaction_id || query.tidx || null,
-      mobile: query.mobile || null,
-      rawCallbackQuery: query,
-      rawLookupResponse: null
-    });
-
-    if (this.env.isLiveMode && query.pidx) {
-      try {
-        const lookup = await this.khaltiClient.lookupPayment(query.pidx);
-        await this.recordEvent(updated.id, "payment.lookup.completed", "khalti", lookup);
-        return this.applySettlement(updated, {
-          status: normalizeKhaltiStatus(lookup.status),
-          transactionId: lookup.transaction_id || updated.gateway.transactionId,
-          mobile: updated.gateway.mobile,
-          rawCallbackQuery: updated.gateway.rawCallbackQuery,
-          rawLookupResponse: lookup
-        });
-      } catch (error) {
-        await this.recordEvent(updated.id, "payment.lookup.failed", "system", {
-          message: error.message,
-          details: error.details || null
-        });
+    await this.transactionRepository.update(transaction.id, (current) => ({
+      gateway: {
+        ...current.gateway,
+        rawCallbackQuery: query
       }
-    }
+    }));
 
-    return updated;
-  }
-
-  async buildMockCallbackQuery(pidx, status) {
-    if (!this.env.isMockMode) {
-      throw new AppError(400, "mock checkout is only available in mock mode");
-    }
-
-    const transaction = await this.transactionRepository.findByPidx(pidx);
-    if (!transaction) {
-      throw new AppError(404, "transaction not found for pidx");
-    }
-
-    const nextStatus = normalizeKhaltiStatus(status || "Completed");
-    return {
-      pidx: transaction.pidx,
-      status: nextStatus === PAYMENT_STATUS.CANCELLED ? "User canceled" : "Completed",
-      amount: transaction.amountPaisa,
-      purchase_order_id: transaction.purchaseOrderId,
-      purchase_order_name: transaction.purchaseOrderName,
-      transaction_id: nextStatus === PAYMENT_STATUS.COMPLETED ? `mock-txn-${Date.now()}` : "",
-      tidx: nextStatus === PAYMENT_STATUS.COMPLETED ? `mock-txn-${Date.now()}` : "",
-      mobile: nextStatus === PAYMENT_STATUS.COMPLETED ? "9800000000" : ""
-    };
+    return this.lookupAndSyncTransactionById(transaction.id);
   }
 
   async getTransaction(transactionId) {
@@ -160,25 +104,42 @@ class PaymentService {
     };
   }
 
-  async getTransactionByPidx(pidx) {
-    const transaction = await this.transactionRepository.findByPidx(pidx);
-    if (!transaction) {
-      throw new AppError(404, "transaction not found");
-    }
-
-    const events = await this.paymentEventRepository.listByTransactionId(transaction.id);
-    return {
-      transaction,
-      events
-    };
-  }
-
   async listTransactions() {
     return this.transactionRepository.list();
   }
 
   async listPaymentEvents() {
     return this.paymentEventRepository.list();
+  }
+
+  async lookupAndSyncTransactionById(transactionId) {
+    const transaction = await this.transactionRepository.findById(transactionId);
+    if (!transaction) {
+      throw new AppError(404, "transaction not found");
+    }
+
+    if (!transaction.pidx) {
+      throw new AppError(400, "transaction does not have a Khalti pidx");
+    }
+
+    try {
+      const lookup = await this.khaltiClient.lookupPayment(transaction.pidx);
+      await this.recordEvent(transaction.id, "payment.lookup.completed", "khalti", lookup);
+
+      return this.applySettlement(transaction, {
+        status: normalizeKhaltiStatus(lookup.status),
+        transactionId: lookup.transaction_id || transaction.gateway.transactionId,
+        mobile: lookup.mobile || transaction.gateway.mobile,
+        rawCallbackQuery: transaction.gateway.rawCallbackQuery,
+        rawLookupResponse: lookup
+      });
+    } catch (error) {
+      await this.recordEvent(transaction.id, "payment.lookup.failed", "system", {
+        message: error.message,
+        details: error.details || null
+      });
+      throw error;
+    }
   }
 
   async applySettlement(transaction, settlement) {

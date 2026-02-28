@@ -13,37 +13,30 @@ function getRequired(name) {
   return value;
 }
 
-function toBoolean(value, fallback = false) {
-  if (value === undefined) {
-    return fallback;
-  }
+const khaltiEnvironment = process.env.KHALTI_ENV || "sandbox";
+const defaultKhaltiBaseUrls = {
+  sandbox: "https://dev.khalti.com/api/v2",
+  production: "https://khalti.com/api/v2"
+};
 
-  return value === "true";
+if (!defaultKhaltiBaseUrls[khaltiEnvironment]) {
+  throw new Error("KHALTI_ENV must be either `sandbox` or `production`.");
 }
 
 const env = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: Number(process.env.PORT || 3000),
-  khaltiMode: process.env.KHALTI_MODE || "mock",
-  khaltiBaseUrl: process.env.KHALTI_BASE_URL || "https://dev.khalti.com/api/v2",
-  khaltiSecretKey: process.env.KHALTI_SECRET_KEY || "",
+  khaltiEnvironment,
+  khaltiBaseUrl: process.env.KHALTI_BASE_URL || defaultKhaltiBaseUrls[khaltiEnvironment],
+  khaltiSecretKey: getRequired("KHALTI_SECRET_KEY"),
   publicBaseUrl: process.env.PUBLIC_BASE_URL || "http://localhost:3000",
   websiteUrl: process.env.WEBSITE_URL || "http://localhost:5173",
   callbackPath: process.env.CALLBACK_PATH || "/api/v1/payments/callback/khalti",
-  strictCallbackSignature: toBoolean(process.env.STRICT_CALLBACK_SIGNATURE, false),
   dataFile: path.resolve(projectRoot, process.env.DATA_FILE || "./data/runtime.json")
 };
 
 env.callbackUrl = new URL(env.callbackPath, env.publicBaseUrl).toString();
-env.isMockMode = env.khaltiMode === "mock";
-env.isLiveMode = env.khaltiMode === "live";
-
-if (!env.isMockMode && !env.isLiveMode) {
-  throw new Error("KHALTI_MODE must be either `mock` or `live`.");
-}
-
-if (env.isLiveMode) {
-  getRequired("KHALTI_SECRET_KEY");
-}
+env.isSandbox = env.khaltiEnvironment === "sandbox";
+env.isProduction = env.khaltiEnvironment === "production";
 
 module.exports = { env };

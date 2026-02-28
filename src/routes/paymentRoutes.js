@@ -10,9 +10,8 @@ function createPaymentRoutes(paymentController) {
   router.get("/payments", asyncHandler(paymentController.listTransactions));
   router.get("/payments/events", asyncHandler(paymentController.getPaymentEvents));
   router.get("/payments/:transactionId", asyncHandler(paymentController.getTransaction));
+  router.post("/payments/:transactionId/lookup", asyncHandler(paymentController.lookupTransaction));
   router.get("/payments/callback/khalti", asyncHandler(paymentController.handleKhaltiCallback));
-  router.get("/payments/mock/checkout/:pidx", asyncHandler(paymentController.renderMockCheckout));
-  router.post("/payments/mock/checkout/:pidx/complete", asyncHandler(paymentController.completeMockCheckout));
 
   return router;
 }

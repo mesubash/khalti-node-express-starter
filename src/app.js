@@ -39,7 +39,7 @@ function createApp() {
     res.json({
       name: "khalti-node-express-starter",
       provider: "khalti",
-      mode: env.khaltiMode,
+      environment: env.khaltiEnvironment,
       callbackUrl: env.callbackUrl,
       docs: "/api/v1/health"
     });
