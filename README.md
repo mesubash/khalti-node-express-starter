@@ -239,10 +239,10 @@ It uses the single script [`start_with_ngrok.sh`](/Users/isubash/Developer/yugo/
 npm run dev
 ```
 
-With your current Spring setup, the public ngrok URL is:
+With a configured static ngrok domain, the public URL will look like:
 
 ```text
-https://inherently-solid-hog.ngrok-free.app
+https://your-static-domain.ngrok-free.app
 ```
 
 For production startup, do not use `npm run dev`. Use:
@@ -273,10 +273,10 @@ Khalti must be able to redirect back to a reachable callback URL. For local deve
 NGROK_URL + CALLBACK_PATH
 ```
 
-With your current Spring env, that resolves to:
+With a configured static ngrok domain, that resolves to:
 
 ```text
-https://inherently-solid-hog.ngrok-free.app/api/v1/payments/callback/khalti
+https://your-static-domain.ngrok-free.app/api/v1/payments/callback/khalti
 ```
 
 Why ngrok is needed:
@@ -290,8 +290,8 @@ Static/free ngrok domain note:
 
 - ngrok currently gives each free account one development domain and states that the domain remains yours while the account exists.
 - Current ngrok docs refer to this as a "dev domain" and show domains like `abc123.ngrok-free.dev`.
-- Older accounts and existing projects may already use stable hosts like `inherently-solid-hog.ngrok-free.app`.
-- If you already have a working static URL such as `inherently-solid-hog.ngrok-free.app`, keep using it. The starter supports that directly.
+- Older accounts and existing projects may already use stable hosts like `your-static-domain.ngrok-free.app`.
+- If you already have a working static URL such as `your-static-domain.ngrok-free.app`, keep using it. The starter supports that directly.
 - If you are setting up a new free account, check the ngrok dashboard under Domains and copy your assigned dev domain into `NGROK_URL`.
 
 If you want to see the domain attached to your ngrok account, check the ngrok dashboard under Domains.
