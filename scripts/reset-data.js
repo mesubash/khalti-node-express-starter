@@ -3,11 +3,12 @@ const path = require("node:path");
 
 const projectRoot = path.resolve(__dirname, "..");
 const dataFile = path.resolve(projectRoot, "data", "runtime.json");
+const seededAt = "2026-02-28T00:00:00.000Z";
 
 const initialState = {
   meta: {
     version: 1,
-    seededAt: new Date().toISOString()
+    seededAt
   },
   transactions: [],
   paymentEvents: []

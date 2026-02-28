@@ -230,6 +230,7 @@ For local development, `npm run dev` starts everything you need:
 - the Node server in watch mode
 
 It uses the single script [`start_with_ngrok.sh`](/Users/isubash/Developer/yugo/yugo-wallet/khalti-impl/khalti-node-express-starter/start_with_ngrok.sh), which reads `NGROK_URL` from the starter-local `.env`.
+The script now waits for ngrok to come online before starting the Node server. If the reserved hostname cannot be attached, it exits early and prints the ngrok log instead of starting with a broken callback URL.
 
 ```bash
 npm run dev
@@ -240,6 +241,12 @@ With a configured static ngrok domain, the public URL will look like:
 ```text
 https://your-static-domain.ngrok-free.app
 ```
+
+You should see startup output that indicates:
+
+- ngrok is being started
+- the tunnel came online successfully
+- the Node server is listening on `http://localhost:3000`
 
 For production startup, do not use `npm run dev`. Use:
 
@@ -253,13 +260,50 @@ npm start
 curl -X POST http://localhost:3000/api/v1/payments/initiate \
   -H "Content-Type: application/json" \
   -d '{
-    "amount": 1000,
-    "purchaseOrderId": "ORDER-1001",
-    "purchaseOrderName": "Demo Product"
+    "amount": 10,
+    "purchaseOrderId": "ORDER-1002",
+    "purchaseOrderName": "Demo Product",
+    "customerInfo": {
+      "name": "Test User",
+      "email": "test@example.com",
+      "phone": "9800000001"
+    }
   }'
 ```
 
 The response will include a real Khalti `paymentUrl`. Open that URL in the browser and complete the sandbox checkout.
+
+Important:
+
+- `purchaseOrderId` must be unique for each local test unless you reset the data file.
+- Real Khalti sandbox requests may reject very small amounts even though the starter accepts `1 NPR`, so `10 NPR` is a safer test amount.
+
+### 6. Verify the result
+
+After completing payment and returning from Khalti, inspect the stored transactions:
+
+```bash
+curl http://localhost:3000/api/v1/payments
+```
+
+Inspect the payment event trail:
+
+```bash
+curl http://localhost:3000/api/v1/payments/events
+```
+
+If you want to re-check status directly from Khalti lookup, use the saved transaction id:
+
+```bash
+curl -X POST http://localhost:3000/api/v1/payments/<transaction-id>/lookup
+```
+
+### 7. Troubleshooting
+
+- If Khalti redirects to an ngrok offline page, your tunnel URL is not actually attached. Restart with `npm run dev` and check the ngrok startup log.
+- If initiation works but the callback does not update the transaction, verify that `NGROK_URL` matches the exact reserved domain attached to your ngrok account.
+- If you get a duplicate order error, use a new `purchaseOrderId` or run `npm run reset:data`.
+- If Khalti rejects the request, verify the local `.env` values for `KHALTI_SECRET_KEY`, `KHALTI_ENV`, and `NGROK_URL`.
 
 ## ngrok guide for this repo
 
