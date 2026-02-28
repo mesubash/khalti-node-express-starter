@@ -23,7 +23,7 @@ There is no wallet system, no fake checkout, and no database dependency. The goa
 - Manual lookup endpoint for re-syncing a transaction
 - `.env.example` with the required setup variables
 - README guidance for local development and public callback URLs
-- ngrok helper script for local callback testing
+- single local startup script that brings up ngrok and the Node server together
 
 ## Project structure
 
@@ -226,38 +226,32 @@ If you do not set `KHALTI_BASE_URL`, the starter uses:
 https://dev.khalti.com/api/v2
 ```
 
-### 4. Start ngrok
+### 4. Start the app
 
-The starter includes [`start_ngrok.sh`](/Users/isubash/Developer/yugo/yugo-wallet/khalti-impl/khalti-node-express-starter/start_ngrok.sh), which reads `NGROK_URL` from the Spring root `.env` or the starter-local `.env` and starts ngrok for port `3000`.
-
-```bash
-npm run start:ngrok
-```
-
-With your current Spring setup, this becomes:
-
-```text
-https://inherently-solid-hog.ngrok-free.app
-```
-
-### 5. Start the app
-
-For local development, `npm run dev` now starts both:
+For local development, `npm run dev` starts everything you need:
 
 - ngrok for the callback URL
 - the Node server in watch mode
+
+It uses the single script [`start_with_ngrok.sh`](/Users/isubash/Developer/yugo/yugo-wallet/khalti-impl/khalti-node-express-starter/start_with_ngrok.sh), which reads `NGROK_URL` from the Spring root `.env` or the starter-local `.env`.
 
 ```bash
 npm run dev
 ```
 
-If you want to run only the server without starting ngrok, use:
+With your current Spring setup, the public ngrok URL is:
 
-```bash
-npm run dev:server
+```text
+https://inherently-solid-hog.ngrok-free.app
 ```
 
-### 6. Initiate a payment
+For production startup, do not use `npm run dev`. Use:
+
+```bash
+npm start
+```
+
+### 5. Initiate a payment
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/payments/initiate \
