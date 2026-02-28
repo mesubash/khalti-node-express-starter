@@ -1,0 +1,29 @@
+{
+  "name": "khalti-node-express-starter",
+  "version": "1.0.0",
+  "description": "A modular Node.js + Express starter for Khalti ePayment integration.",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "reset:data": "node scripts/reset-data.js",
+    "check": "node --check src/server.js"
+  },
+  "keywords": [
+    "khalti",
+    "express",
+    "nodejs",
+    "payments",
+    "starter"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0"
+  }
+}

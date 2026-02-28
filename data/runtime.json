@@ -1,0 +1,110 @@
+{
+  "meta": {
+    "version": 1,
+    "seededAt": "2026-02-28T00:00:00.000Z"
+  },
+  "transactions": [
+    {
+      "id": "eddb09a8-e065-4fbc-8b53-41ab20c2c494",
+      "provider": "khalti",
+      "mode": "mock",
+      "purchaseOrderId": "ORDER-TEST-001",
+      "purchaseOrderName": "Demo Product",
+      "amountNpr": 1,
+      "amountPaisa": 100,
+      "status": "completed",
+      "pidx": "mock-77407365217e42519f4cad1b",
+      "paymentUrl": "http://localhost:3101/api/v1/payments/mock/checkout/mock-77407365217e42519f4cad1b",
+      "returnUrl": "http://localhost:3101/api/v1/payments/callback/khalti",
+      "websiteUrl": "http://localhost:5173",
+      "expiresAt": "2026-02-28T10:56:00.157Z",
+      "expiresIn": 1800,
+      "customerInfo": {
+        "name": "Test User",
+        "email": "test@example.com"
+      },
+      "metadata": {},
+      "gateway": {
+        "initiatedAt": "2026-02-28T10:26:00.156Z",
+        "transactionId": "mock-txn-1772274360162",
+        "mobile": "9800000000",
+        "rawInitiateResponse": {
+          "pidx": "mock-77407365217e42519f4cad1b",
+          "payment_url": "http://localhost:3101/api/v1/payments/mock/checkout/mock-77407365217e42519f4cad1b",
+          "expires_at": "2026-02-28T10:56:00.157Z",
+          "expires_in": 1800
+        },
+        "rawLookupResponse": null,
+        "rawCallbackQuery": {
+          "pidx": "mock-77407365217e42519f4cad1b",
+          "status": "Completed",
+          "amount": "100",
+          "purchase_order_id": "ORDER-TEST-001",
+          "purchase_order_name": "Demo Product",
+          "transaction_id": "mock-txn-1772274360162",
+          "tidx": "mock-txn-1772274360162",
+          "mobile": "9800000000"
+        }
+      },
+      "createdAt": "2026-02-28T10:26:00.156Z",
+      "updatedAt": "2026-02-28T10:26:00.165Z",
+      "confirmedAt": "2026-02-28T10:26:00.165Z"
+    }
+  ],
+  "paymentEvents": [
+    {
+      "id": "2d389b4c-5434-4ae9-ba32-a1ae5e0bb3d7",
+      "transactionId": "eddb09a8-e065-4fbc-8b53-41ab20c2c494",
+      "type": "payment.initiated",
+      "source": "api",
+      "payload": {
+        "request": {
+          "return_url": "http://localhost:3101/api/v1/payments/callback/khalti",
+          "website_url": "http://localhost:5173",
+          "amount": 100,
+          "purchase_order_id": "ORDER-TEST-001",
+          "purchase_order_name": "Demo Product",
+          "customer_info": {
+            "name": "Test User",
+            "email": "test@example.com"
+          }
+        },
+        "response": {
+          "pidx": "mock-77407365217e42519f4cad1b",
+          "payment_url": "http://localhost:3101/api/v1/payments/mock/checkout/mock-77407365217e42519f4cad1b",
+          "expires_at": "2026-02-28T10:56:00.157Z",
+          "expires_in": 1800
+        }
+      },
+      "createdAt": "2026-02-28T10:26:00.157Z"
+    },
+    {
+      "id": "27808d79-4b3f-446b-bdee-b176fe9c450d",
+      "transactionId": "eddb09a8-e065-4fbc-8b53-41ab20c2c494",
+      "type": "payment.callback.received",
+      "source": "khalti",
+      "payload": {
+        "pidx": "mock-77407365217e42519f4cad1b",
+        "status": "Completed",
+        "amount": "100",
+        "purchase_order_id": "ORDER-TEST-001",
+        "purchase_order_name": "Demo Product",
+        "transaction_id": "mock-txn-1772274360162",
+        "tidx": "mock-txn-1772274360162",
+        "mobile": "9800000000"
+      },
+      "createdAt": "2026-02-28T10:26:00.165Z"
+    },
+    {
+      "id": "92368366-d858-4946-a141-5dbb789ede7b",
+      "transactionId": "eddb09a8-e065-4fbc-8b53-41ab20c2c494",
+      "type": "payment.status.updated",
+      "source": "system",
+      "payload": {
+        "status": "completed",
+        "transactionId": "mock-txn-1772274360162"
+      },
+      "createdAt": "2026-02-28T10:26:00.165Z"
+    }
+  ]
+}
