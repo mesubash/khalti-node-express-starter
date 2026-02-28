@@ -23,6 +23,7 @@ There is no wallet system, no fake checkout, and no database dependency. The goa
 - Manual lookup endpoint for re-syncing a transaction
 - `.env.example` with the required setup variables
 - README guidance for local development and public callback URLs
+- ngrok helper script for local callback testing
 
 ## Project structure
 
@@ -209,7 +210,7 @@ Use your Khalti test credentials in `.env`:
 KHALTI_ENV=sandbox
 KHALTI_SECRET_KEY=your_test_secret_key
 WEBSITE_URL=http://localhost:5173
-PUBLIC_BASE_URL=https://your-public-url
+NGROK_URL=https://your-static-domain.ngrok-free.app
 CALLBACK_PATH=/api/v1/payments/callback/khalti
 ```
 
@@ -225,13 +226,38 @@ If you do not set `KHALTI_BASE_URL`, the starter uses:
 https://dev.khalti.com/api/v2
 ```
 
-### 4. Start the server
+### 4. Start ngrok
+
+The starter includes [`start_ngrok.sh`](/Users/isubash/Developer/yugo/yugo-wallet/khalti-impl/khalti-node-express-starter/start_ngrok.sh), which reads `NGROK_URL` from the Spring root `.env` or the starter-local `.env` and starts ngrok for port `3000`.
+
+```bash
+npm run start:ngrok
+```
+
+With your current Spring setup, this becomes:
+
+```text
+https://inherently-solid-hog.ngrok-free.app
+```
+
+### 5. Start the app
+
+For local development, `npm run dev` now starts both:
+
+- ngrok for the callback URL
+- the Node server in watch mode
 
 ```bash
 npm run dev
 ```
 
-### 5. Initiate a payment
+If you want to run only the server without starting ngrok, use:
+
+```bash
+npm run dev:server
+```
+
+### 6. Initiate a payment
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/payments/initiate \
@@ -245,41 +271,65 @@ curl -X POST http://localhost:3000/api/v1/payments/initiate \
 
 The response will include a real Khalti `paymentUrl`. Open that URL in the browser and complete the sandbox checkout.
 
-## Public callback URL options
+## ngrok guide for this repo
 
-Khalti must be able to redirect back to a reachable callback URL. The starter builds it as:
+Khalti must be able to redirect back to a reachable callback URL. For local development, this repo uses ngrok only. The callback URL is built as:
 
 ```text
-PUBLIC_BASE_URL + CALLBACK_PATH
+NGROK_URL + CALLBACK_PATH
 ```
 
-Two practical options:
+With your current Spring env, that resolves to:
 
-### Option 1: ngrok
-
-```bash
-ngrok http 3000
+```text
+https://inherently-solid-hog.ngrok-free.app/api/v1/payments/callback/khalti
 ```
 
-Then copy the HTTPS URL into `.env`:
+Why ngrok is needed:
+
+- Khalti checkout itself is hosted by Khalti, for example `https://test-pay.khalti.com/?pidx=...`
+- your local Express app cannot receive internet callbacks on `localhost`
+- ngrok gives your local app a public HTTPS URL
+- Khalti redirects back to that public URL after payment
+
+Static/free ngrok domain note:
+
+- ngrok currently gives each free account one development domain and states that the domain remains yours while the account exists.
+- Current ngrok docs refer to this as a "dev domain" and show domains like `abc123.ngrok-free.dev`.
+- Older accounts and existing projects may already use stable hosts like `inherently-solid-hog.ngrok-free.app`.
+- If you already have a working static URL such as `inherently-solid-hog.ngrok-free.app`, keep using it. The starter supports that directly.
+- If you are setting up a new free account, check the ngrok dashboard under Domains and copy your assigned dev domain into `NGROK_URL`.
+
+If you want to see the domain attached to your ngrok account, check the ngrok dashboard under Domains.
+
+## Production callback setup
+
+In production, do not use ngrok for your callback URL.
+
+Replace it with your deployed public API domain and keep the same callback path.
+
+Example:
 
 ```env
-PUBLIC_BASE_URL=https://your-subdomain.ngrok-free.app
+KHALTI_ENV=production
+KHALTI_SECRET_KEY=your_live_secret_key
+PUBLIC_BASE_URL=https://api.yourdomain.com
+WEBSITE_URL=https://yourdomain.com
+CALLBACK_PATH=/api/v1/payments/callback/khalti
 ```
 
-### Option 2: Cloudflare Quick Tunnel
+That gives you a production callback URL like:
 
-```bash
-cloudflared tunnel --url http://localhost:3000
+```text
+https://api.yourdomain.com/api/v1/payments/callback/khalti
 ```
 
-Then copy the generated URL into `.env`:
+Practical production guidance:
 
-```env
-PUBLIC_BASE_URL=https://random-subdomain.trycloudflare.com
-```
-
-Cloudflare Quick Tunnel is a good alternative when you want a fast public callback URL without setting up extra app-side tooling.
+- host the Node API on a stable public HTTPS domain
+- set `PUBLIC_BASE_URL` to that deployed API base URL
+- stop using `NGROK_URL` in production
+- keep the same callback route so the integration code does not need to change
 
 ## Sandbox vs production
 
@@ -344,5 +394,6 @@ npm run reset:data
 ## References
 
 - Khalti ePayment docs: https://docs.khalti.com/khalti-epayment/
-- ngrok HTTP tunnels: https://ngrok.com/docs/http
-- Cloudflare Quick Tunnel: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/
+- ngrok free plan limits: https://ngrok.com/docs/pricing-limits/free-plan-limits
+- ngrok domains docs: https://ngrok.com/docs/universal-gateway/domains
+- ngrok dev domain update: https://ngrok.com/blog/free-static-domains-ngrok-users

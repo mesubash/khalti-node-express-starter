@@ -4,10 +4,12 @@
   "description": "A modular Node.js + Express starter for Khalti ePayment integration.",
   "main": "src/server.js",
   "scripts": {
-    "dev": "node --watch src/server.js",
+    "dev": "bash ./start_dev.sh",
+    "dev:server": "node --watch src/server.js",
     "start": "node src/server.js",
     "reset:data": "node scripts/reset-data.js",
-    "check": "node --check src/server.js"
+    "check": "node --check src/server.js",
+    "start:ngrok": "bash ./start_ngrok.sh"
   },
   "keywords": [
     "khalti",
